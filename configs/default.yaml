@@ -1,0 +1,23 @@
+dataset:
+  name: rellis3d
+  image_size: [320, 512]
+  sequence_split: true
+
+model:
+  name: compact_unet
+  input_channels: 3
+  num_classes: 5
+  base_channels: 32
+
+mapping:
+  grid_resolution_m: 0.20
+  local_width_m: 20.0
+  local_length_m: 30.0
+  history_frames: 5
+
+planner:
+  connectivity: 8
+  goal_distance_m: 12.0
+  unknown_is_blocked: true
+  vehicle_radius_m: 0.60
+

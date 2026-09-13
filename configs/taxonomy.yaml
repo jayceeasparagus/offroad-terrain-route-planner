@@ -1,0 +1,19 @@
+classes:
+  - id: 0
+    name: firm_ground
+    planning_cost: 1.0
+  - id: 1
+    name: soft_or_risky
+    planning_cost: 4.0
+  - id: 2
+    name: vegetation
+    planning_cost: 6.0
+  - id: 3
+    name: obstacle
+    planning_cost: 100.0
+  - id: 4
+    name: unknown
+    planning_cost: 20.0
+
+ignore_index: 255
+
