@@ -8,7 +8,9 @@ from offroad_perception.data.rellis import discover_camera_frames, discover_lida
 from offroad_perception.data.taxonomy import load_taxonomy, remap_label_ids
 
 
-ROOT = Path("data/raw/rellis3d")
+DATA_ROOT = Path("data/raw/rellis3d")
+IMAGE_EXAMPLE_ROOT = DATA_ROOT / "image_examples"
+LIDAR_EXAMPLE_ROOT = DATA_ROOT / "lidar_examples"
 
 
 def test_rellis_label_mapping_covers_declared_source_ids() -> None:
@@ -20,22 +22,22 @@ def test_rellis_label_mapping_covers_declared_source_ids() -> None:
 
 
 def test_example_files_can_be_discovered() -> None:
-    if not ROOT.exists():
-        pytest.skip("RELLIS example data is not available")
+    if not IMAGE_EXAMPLE_ROOT.exists():
+        pytest.skip("RELLIS image examples are not available")
 
-    frames = discover_camera_frames(ROOT)
-    scans = discover_lidar_scans(ROOT)
+    frames = discover_camera_frames(IMAGE_EXAMPLE_ROOT)
+    scans = discover_lidar_scans(LIDAR_EXAMPLE_ROOT)
     assert len(frames) == 4
     assert len(scans) >= 8
     assert all(frame.label_path.exists() for frame in frames)
 
 
 def test_example_dataset_returns_tensors() -> None:
-    if not ROOT.exists():
-        pytest.skip("RELLIS example data is not available")
+    if not IMAGE_EXAMPLE_ROOT.exists():
+        pytest.skip("RELLIS image examples are not available")
 
     taxonomy = load_taxonomy(Path("configs/taxonomy.yaml"))
-    frames = discover_camera_frames(ROOT)
+    frames = discover_camera_frames(IMAGE_EXAMPLE_ROOT)
     sample = RellisSegmentationDataset(frames, taxonomy, image_size=(64, 96))[0]
     assert sample["image"].shape == (3, 64, 96)
     assert sample["mask"].shape == (64, 96)
