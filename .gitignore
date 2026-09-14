@@ -2,6 +2,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.py[cod]
+*.egg-info/
 data/raw/
 /data/
 data/processed/
@@ -17,4 +18,3 @@ checkpoints/
 *.jpg
 *.jpeg
 !.github/
-
