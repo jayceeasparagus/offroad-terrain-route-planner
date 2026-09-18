@@ -1,9 +1,11 @@
-"""Small Pillow-based visualizations for terrain predictions."""
+"""Small Pillow-based visualizations for terrain predictions and routes."""
 
 from collections.abc import Sequence
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+from .routes import RouteCandidate
 
 
 TERRAIN_COLORS: dict[str, tuple[int, int, int]] = {
@@ -54,6 +56,25 @@ def confidence_heatmap(confidence: np.ndarray) -> Image.Image:
     return Image.fromarray(colors.astype(np.uint8), mode="RGB")
 
 
+def traversability_heatmap(route_cost: np.ndarray, blocked: np.ndarray) -> Image.Image:
+    """Render low route cost in green and high route cost in red."""
+    if route_cost.ndim != 2 or blocked.shape != route_cost.shape:
+        raise ValueError("route_cost and blocked must share a two-dimensional shape")
+    values = np.clip(route_cost.astype(np.float32), 0.0, 1.0)
+    low = np.asarray((25, 200, 65), dtype=np.float32)
+    medium = np.asarray((255, 215, 40), dtype=np.float32)
+    high = np.asarray((220, 45, 45), dtype=np.float32)
+    lower_half = values[..., None] * 2.0
+    upper_half = (values[..., None] - 0.5) * 2.0
+    colors = np.where(
+        values[..., None] <= 0.5,
+        low * (1.0 - lower_half) + medium * lower_half,
+        medium * (1.0 - upper_half) + high * upper_half,
+    )
+    colors[blocked] = (190, 40, 220)
+    return Image.fromarray(colors.astype(np.uint8), mode="RGB")
+
+
 def semantic_overlay(
     image: Image.Image,
     semantic_mask: Image.Image,
@@ -67,22 +88,35 @@ def semantic_overlay(
     return Image.blend(camera, mask, alpha)
 
 
-def render_dashboard(
+def draw_candidate_routes(
     image: Image.Image,
-    semantic_mask: Image.Image,
-    overlay: Image.Image,
-    confidence: Image.Image,
-    panel_size: tuple[int, int] = (512, 320),
+    candidates: Sequence[RouteCandidate],
+    best_route: RouteCandidate,
 ) -> Image.Image:
-    """Build a labeled 2-by-2 frame suitable for a demo GIF."""
+    """Draw blue alternatives and the selected candidate in bright green."""
+    canvas = image.convert("RGB").copy()
+    draw = ImageDraw.Draw(canvas)
+    for candidate in candidates:
+        points = [tuple(point) for point in candidate.points]
+        if candidate.index == best_route.index:
+            draw.line(points, fill=(45, 255, 100), width=5)
+            end_x, end_y = points[-1]
+            radius = 6
+            draw.ellipse(
+                (end_x - radius, end_y - radius, end_x + radius, end_y + radius),
+                fill=(45, 255, 100),
+            )
+        else:
+            draw.line(points, fill=(50, 135, 255), width=2)
+    return canvas
+
+
+def _render_panels(
+    panels: Sequence[tuple[str, Image.Image]],
+    panel_size: tuple[int, int],
+) -> Image.Image:
     panel_width, panel_height = panel_size
     label_height = 22
-    panels = [
-        ("Camera image", image),
-        ("Semantic mask", semantic_mask),
-        ("Semantic overlay", overlay),
-        ("Prediction confidence", confidence),
-    ]
     dashboard = Image.new(
         "RGB",
         (panel_width * 2, (panel_height + label_height) * 2),
@@ -103,3 +137,41 @@ def render_dashboard(
         dashboard.paste(resized, (x, y + label_height))
 
     return dashboard
+
+
+def render_dashboard(
+    image: Image.Image,
+    semantic_mask: Image.Image,
+    overlay: Image.Image,
+    confidence: Image.Image,
+    panel_size: tuple[int, int] = (512, 320),
+) -> Image.Image:
+    """Build a labeled 2-by-2 frame suitable for semantic-only playback."""
+    return _render_panels(
+        [
+            ("Camera image", image),
+            ("Semantic mask", semantic_mask),
+            ("Semantic overlay", overlay),
+            ("Prediction confidence", confidence),
+        ],
+        panel_size,
+    )
+
+
+def render_route_dashboard(
+    route_overlay: Image.Image,
+    semantic_overlay_image: Image.Image,
+    traversability: Image.Image,
+    confidence: Image.Image,
+    panel_size: tuple[int, int] = (512, 320),
+) -> Image.Image:
+    """Build a route-planning dashboard from one camera-frame prediction."""
+    return _render_panels(
+        [
+            ("Candidate routes (green = selected)", route_overlay),
+            ("Semantic overlay", semantic_overlay_image),
+            ("Traversability cost (purple = blocked)", traversability),
+            ("Prediction confidence", confidence),
+        ],
+        panel_size,
+    )

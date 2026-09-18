@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a semantic-terrain playback from an ordered image directory."""
+"""Create a terrain-cost and candidate-route playback from an image directory."""
 
 import argparse
 from pathlib import Path
@@ -27,12 +27,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=REPO_ROOT / "outputs/video_inference",
+        default=REPO_ROOT / "outputs/route_playback",
     )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--max-frames", type=int, default=40)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--fps", type=float, default=8.0)
+    parser.add_argument("--route-count", type=int, default=7)
     parser.add_argument("--image-height", type=int, default=320)
     parser.add_argument("--image-width", type=int, default=512)
     parser.add_argument("--base-channels", type=int, default=16)
@@ -47,6 +48,7 @@ def main() -> None:
         raise ValueError("stride must be positive")
 
     taxonomy = load_taxonomy(REPO_ROOT / "configs/taxonomy.yaml")
+    obstacle_class_id = taxonomy.names.index("obstacle")
     device = resolve_device(args.device)
     model, checkpoint = load_compact_unet_checkpoint(
         args.checkpoint,
@@ -70,13 +72,18 @@ def main() -> None:
         predictor,
         selected,
         taxonomy.names,
+        taxonomy.costs,
         args.output_dir,
+        obstacle_class_id=obstacle_class_id,
+        route_count=args.route_count,
         fps=args.fps,
     )
     print(f"Mean inference: {summary.mean_inference_ms:.1f} ms/frame")
+    print(f"Mean route scoring: {summary.mean_planning_ms:.1f} ms/frame")
     print(f"Mean end-to-end rate: {summary.mean_fps:.2f} FPS")
     print(f"Saved playback: {summary.gif_path}")
     print(f"Saved benchmark: {args.output_dir / 'benchmark.json'}")
+    print(f"Saved route scores: {args.output_dir / 'route_summary.json'}")
 
 
 if __name__ == "__main__":

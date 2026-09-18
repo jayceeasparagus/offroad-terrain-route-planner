@@ -1,6 +1,6 @@
 # Off-Road Terrain Perception and Route Planning
 
-A small autonomy prototype that turns recorded off-road RGB video into a five-class terrain map, a per-pixel confidence map, and eventually a short local route.
+A small autonomy prototype that turns recorded off-road RGB video into a five-class terrain map, a per-pixel confidence map, and a short image-space route suggestion.
 
 ## Project flow
 
@@ -8,35 +8,35 @@ A small autonomy prototype that turns recorded off-road RGB video into a five-cl
 RGB image sequence or video
         -> compact U-Net segmentation
         -> terrain class + confidence per pixel
-        -> traversability scoring
-        -> candidate local route
+        -> traversability cost image
+        -> score candidate visual routes
         -> annotated playback
 ```
 
-The first version intentionally uses one compact U-Net and five navigation-oriented classes. It uses a classical, confidence-aware candidate-route scorer rather than a second learned model. ROS 2, SLAM, LiDAR fusion, and multiple-model comparisons are outside the initial scope.
+The first version intentionally uses one compact U-Net and five navigation-oriented classes. It uses a classical, confidence-aware candidate-route scorer rather than a second learned model. The route is an image-space look-ahead suggestion; without camera calibration or vehicle state, it is not a metric GPS path. ROS 2, SLAM, LiDAR fusion, and multiple-model comparisons are outside the initial scope.
 
-## Planned milestones
+## Implemented milestones
 
-1. Dataset manifest and taxonomy
-2. Segmentation training and held-out sequence evaluation
-3. Video inference, confidence visualization, and playback
-4. Confidence-aware traversability scoring
-5. Candidate-route generation and scoring
-6. Playback benchmarks and failure analysis
+1. Dataset manifest and navigation-oriented terrain taxonomy
+2. Compact U-Net training and held-out sequence evaluation
+3. Video inference with terrain masks and confidence visualization
+4. Probability-based traversability cost and candidate-route scoring
 
-## Run local video inference
+## Run the local route demo
 
-After copying a trained checkpoint to `outputs/checkpoints/rellis-epoch8-baseline/`, create a semantic playback from one RELLIS camera sequence:
+After copying a trained checkpoint to `outputs/checkpoints/rellis-epoch8-baseline/`, create an annotated playback from one RELLIS camera sequence:
 
 ```bash
 PYTHONPATH=src python tools/run_video_inference.py \
   --input-dir data/raw/rellis3d/full/Rellis-3D/00000/pylon_camera_node \
   --device cpu \
   --max-frames 20 \
-  --output-dir outputs/video_inference
+  --output-dir outputs/route_playback
 ```
 
-The command writes `terrain_playback.gif`, a `preview.png`, per-frame dashboard PNGs, and `benchmark.json`. The four dashboard panels are the camera image, semantic mask, color overlay, and model confidence.
+The command writes `terrain_route_playback.gif`, a `preview.png`, per-frame dashboard PNGs, `benchmark.json`, and `route_summary.json`.
+
+The dashboard shows candidate routes in blue, the lowest-cost selected route in green, a semantic overlay, a terrain-cost image, and the model confidence. Purple cost-map cells are blocked because the model assigned at least 35% obstacle probability.
 
 ## Local setup
 
