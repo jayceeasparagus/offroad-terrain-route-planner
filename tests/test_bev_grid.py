@@ -18,12 +18,12 @@ def test_vehicle_axes_follow_camera_forward_and_right() -> None:
 
 
 def test_grid_marks_obstacle_and_penalizes_height_variation() -> None:
-    # With identity axes, LiDAR z is camera forward for this focused unit test.
+    # With identity axes, LiDAR z is camera forward and y is camera down.
     transform = LidarToCameraTransform(np.eye(3), np.zeros(3))
     points = np.array(
         [
             [1.0, 0.0, 1.0],
-            [1.0, 0.0, 1.3],
+            [1.0, 0.3, 1.0],
             [0.0, 1.0, 1.0],
         ],
         dtype=np.float32,

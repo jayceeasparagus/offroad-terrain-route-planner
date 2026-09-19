@@ -14,7 +14,7 @@ RGB image sequence + synchronized LiDAR scan
         -> annotated playback
 ```
 
-The initial RGB-only baseline uses a compact U-Net and five navigation-oriented classes. Its confidence-aware candidate-route scorer is intentionally simple and image-space only. The enhanced pipeline will use LiDAR for real distances and ground geometry while retaining one compact segmentation model.
+The initial RGB-only baseline uses a compact U-Net and five navigation-oriented classes. Its confidence-aware candidate-route scorer is intentionally simple and image-space only. The enhanced pipeline uses LiDAR for real distances and ground geometry while retaining one compact segmentation model.
 
 ## Implemented milestones
 
@@ -25,6 +25,7 @@ The initial RGB-only baseline uses a compact U-Net and five navigation-oriented 
 5. Offline extraction of synchronized RELLIS camera and Ouster LiDAR samples
 6. Distortion-aware Ouster-to-camera projection diagnostic
 7. Internal vehicle-aligned metric traversability grid
+8. A* local route planning with camera-frame route projection
 
 ## Run the local RGB-only route demo
 
@@ -79,7 +80,23 @@ PYTHONPATH=src python tools/build_traversability_grid.py \
   --output outputs/grid_smoke/frame_000000.npz
 ```
 
-Observed cells use painted terrain risk and height variation. Empty cells remain high-cost, and any obstacle-painted point blocks its cell. The next milestone will run A* through this grid.
+Observed cells use painted terrain risk and height variation. Empty cells remain high-cost, and any obstacle-painted point blocks its cell.
+
+## Run A* route planning
+
+The planner selects a low-risk goal 8–18 m ahead, searches through the grid with 8-connected A*, simplifies the collision-free route, and projects a dense version back onto the camera frame:
+
+```bash
+PYTHONPATH=src python tools/plan_rellis_route.py \
+  --grid outputs/grid_smoke/frame_000000.npz \
+  --image data/raw/rellis3d/extracted_sample/camera/frame_000000.png \
+  --intrinsics data/raw/rellis3d/extracted_sample/camera_intrinsics.json \
+  --transform data/raw/rellis3d/calibration/Rellis_3D/00000/transforms.yaml \
+  --output outputs/route_smoke/frame_000000_overlay.png \
+  --route-output outputs/route_smoke/frame_000000_route.npz
+```
+
+The output route is local and image-overlaid. It is not a global GPS trajectory or a vehicle controller.
 
 ## Local setup
 
