@@ -24,6 +24,7 @@ The initial RGB-only baseline uses a compact U-Net and five navigation-oriented 
 4. Probability-based traversability cost and RGB-only candidate-route scoring
 5. Offline extraction of synchronized RELLIS camera and Ouster LiDAR samples
 6. Distortion-aware Ouster-to-camera projection diagnostic
+7. Internal vehicle-aligned metric traversability grid
 
 ## Run the local RGB-only route demo
 
@@ -67,7 +68,18 @@ PYTHONPATH=src python tools/project_rellis_lidar.py \
   --output outputs/projection/projected_points.png
 ```
 
-This is a calibration diagnostic only. The following milestone will use projected points to attach terrain probabilities and confidence to 3D observations.
+## Build the internal metric traversability grid
+
+After painting one scan, rasterize it into a 20 m by 20 m, 0.2 m resolution grid aligned with the vehicle's forward/right axes. The grid is an internal planner representation; it does not need to be displayed in the final video.
+
+```bash
+PYTHONPATH=src python tools/build_traversability_grid.py \
+  --painted outputs/semantic_painting_smoke/frame_000000.npz \
+  --transform data/raw/rellis3d/calibration/Rellis_3D/00000/transforms.yaml \
+  --output outputs/grid_smoke/frame_000000.npz
+```
+
+Observed cells use painted terrain risk and height variation. Empty cells remain high-cost, and any obstacle-painted point blocks its cell. The next milestone will run A* through this grid.
 
 ## Local setup
 
