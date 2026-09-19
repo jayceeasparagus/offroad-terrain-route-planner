@@ -111,6 +111,44 @@ def draw_candidate_routes(
     return canvas
 
 
+def draw_semantic_points(
+    image: Image.Image,
+    pixels: np.ndarray,
+    class_ids: np.ndarray,
+    class_names: Sequence[str],
+    confidence: np.ndarray,
+    *,
+    draw_stride: int = 3,
+) -> Image.Image:
+    """Overlay color-coded, confidence-weighted semantic LiDAR points."""
+    if pixels.ndim != 2 or pixels.shape[1] != 2:
+        raise ValueError("pixels must have shape (N, 2)")
+    if len(pixels) != len(class_ids) or len(pixels) != len(confidence):
+        raise ValueError("pixels, class_ids, and confidence must have equal length")
+    if draw_stride < 1:
+        raise ValueError("draw_stride must be at least one")
+
+    canvas = image.convert("RGB").copy()
+    draw = ImageDraw.Draw(canvas)
+    palette = np.asarray(
+        [TERRAIN_COLORS.get(name, (255, 255, 255)) for name in class_names],
+        dtype=np.float32,
+    )
+    for pixel, class_id, point_confidence in zip(
+        pixels[::draw_stride], class_ids[::draw_stride], confidence[::draw_stride]
+    ):
+        if not 0 <= class_id < len(palette):
+            continue
+        color = tuple(
+            np.clip(palette[class_id] * (0.35 + 0.65 * point_confidence), 0, 255)
+            .astype(np.uint8)
+            .tolist()
+        )
+        x, y = pixel
+        draw.ellipse((x - 1, y - 1, x + 1, y + 1), fill=color)
+    return canvas
+
+
 def _render_panels(
     panels: Sequence[tuple[str, Image.Image]],
     panel_size: tuple[int, int],
