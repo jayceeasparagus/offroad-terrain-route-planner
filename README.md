@@ -2,7 +2,7 @@
 
 A small autonomy prototype that turns recorded off-road RGB video into a five-class terrain map, a per-pixel confidence map, and a short local route suggestion.
 
-## Project flow
+## Target enhanced pipeline
 
 ```text
 RGB image sequence + synchronized LiDAR scan
@@ -23,6 +23,7 @@ The initial RGB-only baseline uses a compact U-Net and five navigation-oriented 
 3. Video inference with terrain masks and confidence visualization
 4. Probability-based traversability cost and RGB-only candidate-route scoring
 5. Offline extraction of synchronized RELLIS camera and Ouster LiDAR samples
+6. Distortion-aware Ouster-to-camera projection diagnostic
 
 ## Run the local RGB-only route demo
 
@@ -52,6 +53,21 @@ PYTHONPATH=src python tools/extract_rellis_synced_bag.py \
 ```
 
 The output contains `camera/`, `lidar/`, `camera_intrinsics.json`, and `frames.json`. Every exported LiDAR file contains finite XYZ coordinates paired to one camera image within the configured timestamp tolerance.
+
+## Validate calibrated LiDAR projection
+
+The RELLIS calibration file defines the camera pose in the Ouster frame; the project loader inverts it to project LiDAR points into the camera. This command draws distance-colored projected points for a single synchronized pair:
+
+```bash
+PYTHONPATH=src python tools/project_rellis_lidar.py \
+  --image data/raw/rellis3d/extracted_sample/camera/frame_000000.png \
+  --lidar data/raw/rellis3d/extracted_sample/lidar/frame_000000.npz \
+  --intrinsics data/raw/rellis3d/extracted_sample/camera_intrinsics.json \
+  --transform data/raw/rellis3d/calibration/Rellis_3D/00000/transforms.yaml \
+  --output outputs/projection/projected_points.png
+```
+
+This is a calibration diagnostic only. The following milestone will use projected points to attach terrain probabilities and confidence to 3D observations.
 
 ## Local setup
 
