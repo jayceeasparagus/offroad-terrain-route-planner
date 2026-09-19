@@ -109,3 +109,48 @@ pytest
 ```
 
 Dataset files, model checkpoints, and generated outputs are intentionally excluded from Git.
+## Run the integrated RGB/LiDAR route playback
+
+The integrated demo runs the complete offline pipeline for each synchronized pair:
+
+```text
+RGB + LiDAR -> Compact U-Net -> calibrated projection -> painted points
+             -> metric traversability grid -> A* route -> camera overlay
+```
+
+Run it on the extracted synchronized sample with:
+
+```bash
+PYTHONPATH=src python tools/run_fusion_playback.py \
+  --data-root data/raw/rellis3d/extracted_sample \
+  --transform data/raw/rellis3d/calibration/Rellis_3D/00000/transforms.yaml \
+  --checkpoint outputs/checkpoints/rellis-epoch8-baseline/best_compact_unet.pt \
+  --device cpu \
+  --max-frames 20 \
+  --output-dir outputs/fusion_playback
+```
+
+The dashboard contains an A* route overlay, semantic predictions, painted LiDAR points, and prediction confidence. The route is local to each frame; it is a planning visualization rather than a controller or a global SLAM map. The command writes `semantic_route_playback.gif`, `preview.png`, `benchmark.json`, `route_summary.json`, and individual dashboard frames.
+
+## Run the integrated RGB/LiDAR route playback
+
+The integrated demo runs the complete offline pipeline for each synchronized pair:
+
+```text
+RGB + LiDAR -> Compact U-Net -> calibrated projection -> painted points
+             -> metric traversability grid -> A* route -> camera overlay
+```
+
+Run it on the extracted synchronized sample with:
+
+```bash
+PYTHONPATH=src python tools/run_fusion_playback.py \
+  --data-root data/raw/rellis3d/extracted_sample \
+  --transform data/raw/rellis3d/calibration/Rellis_3D/00000/transforms.yaml \
+  --checkpoint outputs/checkpoints/rellis-epoch8-baseline/best_compact_unet.pt \
+  --device cpu \
+  --max-frames 20 \
+  --output-dir outputs/fusion_playback
+```
+
+The dashboard contains an A* route overlay, semantic predictions, painted LiDAR points, and prediction confidence. The route is local to each frame; it is a planning visualization rather than a controller or a global SLAM map. The command writes `semantic_route_playback.gif`, `preview.png`, `benchmark.json`, `route_summary.json`, and individual dashboard frames.
