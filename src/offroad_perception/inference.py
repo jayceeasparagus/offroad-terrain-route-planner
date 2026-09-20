@@ -36,12 +36,21 @@ def load_compact_unet_checkpoint(
     device: torch.device,
     *,
     num_classes: int = 5,
-    base_channels: int = 16,
+    base_channels: int | None = None,
 ) -> tuple[CompactUNet, dict[str, object]]:
-    """Load the compact U-Net format produced by the training notebook."""
+    """Load a compact U-Net checkpoint and infer its channel width by default."""
     checkpoint = torch.load(Path(checkpoint_path), map_location=device)
     if "model_state_dict" not in checkpoint:
         raise ValueError("Checkpoint does not contain model_state_dict")
+
+    if base_channels is None:
+        first_layer = checkpoint["model_state_dict"].get("enc1.block.0.weight")
+        if first_layer is None:
+            raise ValueError(
+                "Could not infer base_channels from checkpoint; "
+                "pass base_channels explicitly"
+            )
+        base_channels = int(first_layer.shape[0])
 
     model = CompactUNet(
         in_channels=3,
