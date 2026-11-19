@@ -109,6 +109,12 @@ pytest
 ```
 
 Dataset files, model checkpoints, and generated outputs are intentionally excluded from Git.
+
+## Model benchmark and optimization
+
+The measured baseline and exact Kaggle handoff for the final Compact U-Net are
+in [docs/rellis_optimization.md](docs/rellis_optimization.md).
+
 ## Run the integrated RGB/LiDAR route playback
 
 The integrated demo runs the complete offline pipeline for each synchronized pair:
