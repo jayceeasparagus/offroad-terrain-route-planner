@@ -23,6 +23,9 @@ def _run_epoch(
     num_classes: int,
     ignore_index: int,
     optimizer: torch.optim.Optimizer | None,
+    *,
+    use_amp: bool = False,
+    scaler: torch.amp.GradScaler | None = None,
 ) -> EpochResult:
     training = optimizer is not None
     model.train(training)
@@ -35,13 +38,19 @@ def _run_epoch(
         for batch in loader:
             images = batch["image"].to(device, non_blocking=True)
             targets = batch["mask"].to(device, non_blocking=True)
-            logits = model(images)
-            loss = segmentation_loss(logits, targets, num_classes, ignore_index)
+            with torch.autocast(device_type=device.type, enabled=use_amp):
+                logits = model(images)
+                loss = segmentation_loss(logits, targets, num_classes, ignore_index)
 
             if training:
                 optimizer.zero_grad(set_to_none=True)
-                loss.backward()
-                optimizer.step()
+                if scaler is None:
+                    loss.backward()
+                    optimizer.step()
+                else:
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
 
             batch_size = images.shape[0]
             total_loss += loss.detach().item() * batch_size
@@ -78,3 +87,28 @@ def evaluate(
     ignore_index: int = 255,
 ) -> EpochResult:
     return _run_epoch(model, loader, device, num_classes, ignore_index, None)
+
+
+def train_one_epoch_amp(
+    model: nn.Module,
+    loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    num_classes: int,
+    *,
+    ignore_index: int = 255,
+    use_amp: bool = False,
+    scaler: torch.amp.GradScaler | None = None,
+) -> EpochResult:
+    """Train one epoch with optional CUDA automatic mixed precision."""
+
+    return _run_epoch(
+        model,
+        loader,
+        device,
+        num_classes,
+        ignore_index,
+        optimizer,
+        use_amp=use_amp,
+        scaler=scaler,
+    )

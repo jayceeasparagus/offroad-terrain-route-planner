@@ -59,13 +59,36 @@ def discover_camera_frames(dataset_root: str | Path) -> list[RellisFrame]:
     return frames
 
 
-def load_split_frames(dataset_root: str | Path, split_file: str | Path) -> list[RellisFrame]:
-    """Load the official RELLIS image/mask split list."""
+def _resolve_split_path(root: Path, relative_path: str) -> Path:
+    """Resolve a split path against either a RELLIS root or ``Rellis-3D``."""
+
+    with_container = root / "Rellis-3D" / relative_path
+    without_container = root / relative_path
+    if with_container.exists():
+        return with_container
+    return without_container
+
+
+def load_split_frames(
+    dataset_root: str | Path,
+    split_file: str | Path,
+    *,
+    image_root: str | Path | None = None,
+    label_root: str | Path | None = None,
+) -> list[RellisFrame]:
+    """Load official RELLIS splits, optionally using separate image/mask roots.
+
+    The public RELLIS camera and label archives are often mounted as separate
+    Kaggle inputs. ``image_root`` and ``label_root`` let the trainer read those
+    inputs directly instead of copying their multi-gigabyte contents.
+    """
     root = Path(dataset_root)
-    data_root = root / "Rellis-3D" if (root / "Rellis-3D").is_dir() else root
     split_path = Path(split_file)
     if not split_path.is_absolute():
         split_path = root / split_path
+
+    image_data_root = Path(image_root) if image_root is not None else root
+    label_data_root = Path(label_root) if label_root is not None else root
 
     frames: list[RellisFrame] = []
     with split_path.open("r", encoding="utf-8") as handle:
@@ -76,8 +99,8 @@ def load_split_frames(dataset_root: str | Path, split_file: str | Path) -> list[
             if len(fields) < 2:
                 raise ValueError(f"Invalid split entry at {split_path}:{line_number}")
 
-            image_path = data_root / fields[0]
-            label_path = data_root / fields[1]
+            image_path = _resolve_split_path(image_data_root, fields[0])
+            label_path = _resolve_split_path(label_data_root, fields[1])
             if not image_path.exists() or not label_path.exists():
                 raise FileNotFoundError(
                     f"Split entry points to missing files at {split_path}:{line_number}"

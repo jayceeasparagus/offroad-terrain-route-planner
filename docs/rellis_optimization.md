@@ -96,9 +96,75 @@ The output reports model-only latency, complete in-memory RGB-to-mask latency,
 and FPS for batch-one FP32 inference. It excludes image disk I/O. Use **Save
 Version** after the run; the JSON will appear under that version's Output tab.
 
-## What comes after the baseline
+## Kaggle handoff: overnight teacher training
 
-Keep this JSON unchanged. The next milestone trains a larger RELLIS teacher
-from random initialization, evaluates it on the held-out sequences, and runs
-the same benchmark command. Only then do we compare FP16, channels-last, and
+The teacher is the same understandable U-Net design widened from 32 to 64 base
+channels. It has about 7.7M parameters, starts from random initialization, and
+uses light image augmentation. The existing official RELLIS train, validation,
+and test splits stay unchanged, so its held-out test result is comparable to
+the compact baseline.
+
+Attach these two existing Kaggle inputs to a fresh GPU notebook:
+
+- `rellis_zip`: the full RGB-image and ID-mask archives.
+- `RELLIS`: the small dataset containing `train.lst`, `val.lst`, and `test.lst`.
+
+Use the same clone/setup cell from the baseline section. Then run this cell to
+locate the two read-only RELLIS roots and verify the official split:
+
+```python
+from pathlib import Path
+
+INPUT_ROOT = Path("/kaggle/input")
+IMAGE_ROOT = next(path for path in INPUT_ROOT.rglob("rellis_images_full") if path.is_dir())
+LABEL_ROOT = next(path for path in INPUT_ROOT.rglob("rellis_masks_id") if path.is_dir())
+SPLIT_ROOT = next(path.parent for path in INPUT_ROOT.rglob("train.lst"))
+
+print("Images:", IMAGE_ROOT)
+print("Labels:", LABEL_ROOT)
+print("Splits:", SPLIT_ROOT)
+```
+
+Start the run with a Tesla T4 accelerator and Internet enabled:
+
+```python
+import subprocess
+
+OUTPUT_DIR = REPO_ROOT / "outputs/checkpoints/rellis_teacher_large64"
+
+subprocess.run(
+    [
+        "python",
+        "tools/train_rellis_teacher.py",
+        "--data-root", str(IMAGE_ROOT),
+        "--image-root", str(IMAGE_ROOT),
+        "--label-root", str(LABEL_ROOT),
+        "--split-root", str(SPLIT_ROOT),
+        "--output-dir", str(OUTPUT_DIR),
+        "--base-channels", "64",
+        "--epochs", "60",
+        "--batch-size", "4",
+        "--num-workers", "2",
+        "--device", "cuda",
+    ],
+    cwd=REPO_ROOT,
+    check=True,
+)
+```
+
+The trainer writes `latest_rellis_teacher.pt` at the end of every epoch and
+preserves `best_rellis_teacher.pt` whenever validation mIoU improves. It also
+writes final held-out `test_metrics.json`, `test_predictions.png`,
+`training_history.json`, and `rellis_teacher_large64_artifacts.zip`.
+
+Use **Save Version** then **Save & Run All** before leaving Kaggle. After the
+run finishes, download the artifact ZIP from the version's Output tab. To
+continue an intentionally stopped local/draft run, add:
+
+```text
+--resume outputs/checkpoints/rellis_teacher_large64/latest_rellis_teacher.pt
+```
+
+Keep the baseline JSON unchanged. After the teacher finishes, benchmark it
+with the same benchmark command and then compare FP16, channels-last, and
 compilation optimizations against both models.

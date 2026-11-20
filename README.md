@@ -112,8 +112,8 @@ Dataset files, model checkpoints, and generated outputs are intentionally exclud
 
 ## Model benchmark and optimization
 
-The measured baseline and exact Kaggle handoff for the final Compact U-Net are
-in [docs/rellis_optimization.md](docs/rellis_optimization.md).
+The measured baseline, larger teacher-training run, and Kaggle handoff are in
+[docs/rellis_optimization.md](docs/rellis_optimization.md).
 
 ## Run the integrated RGB/LiDAR route playback
 
